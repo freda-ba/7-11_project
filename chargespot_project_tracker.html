@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>跨部門專案追蹤報告產生器</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f5f4f0;
+  --surface: #ffffff;
+  --surface2: #f0efe9;
+  --border: #e0ddd5;
+  --border2: #c8c5bb;
+  --text: #1a1917;
+  --text2: #6b6860;
+  --text3: #9e9b93;
+  --accent: #1a1917;
+  --accent-bg: #1a1917;
+  --accent-text: #f5f4f0;
+  --green: #2d6a4f;
+  --green-bg: #e8f5ee;
+  --amber: #92400e;
+  --amber-bg: #fef3c7;
+  --red: #991b1b;
+  --red-bg: #fee2e2;
+  --blue: #1e40af;
+  --blue-bg: #eff6ff;
+  --radius: 10px;
+  --radius-sm: 6px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Noto Sans TC', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 2rem 1rem;
+}
+
+.container { max-width: 720px; margin: 0 auto; }
+
+/* Header */
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 2rem;
+}
+.app-logo {
+  width: 36px; height: 36px;
+  background: var(--accent-bg);
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+}
+.app-logo svg { width: 20px; height: 20px; fill: var(--accent-text); }
+.app-title { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; }
+.app-sub { font-size: 12px; color: var(--text3); margin-top: 1px; }
+
+/* Progress */
+.progress-wrap { margin-bottom: 1.5rem; }
+.progress-labels {
+  display: flex; justify-content: space-between;
+  font-size: 11px; color: var(--text3);
+  margin-bottom: 6px;
+  font-family: 'DM Mono', monospace;
+}
+.progress-track {
+  height: 3px; background: var(--border);
+  border-radius: 99px; overflow: hidden;
+}
+.progress-fill {
+  height: 100%; background: var(--accent-bg);
+  border-radius: 99px;
+  transition: width 0.4s cubic-bezier(.4,0,.2,1);
+}
+
+/* Card */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+/* Step */
+.step { display: none; }
+.step.active { display: block; }
+
+.step-tag {
+  font-size: 10px; font-weight: 700;
+  font-family: 'DM Mono', monospace;
+  color: var(--text3);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+.step-title {
+  font-size: 18px; font-weight: 700;
+  letter-spacing: -0.4px;
+  margin-bottom: 0.25rem;
+}
+.step-hint {
+  font-size: 13px; color: var(--text2);
+  margin-bottom: 1.25rem;
+  line-height: 1.6;
+}
+
+/* Form elements */
+label.field-label {
+  display: block;
+  font-size: 13px; font-weight: 500;
+  color: var(--text2);
+  margin-bottom: 6px;
+  margin-top: 1rem;
+}
+label.field-label:first-of-type { margin-top: 0; }
+
+input[type="text"], input[type="date"], textarea, select {
+  width: 100%;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  font-size: 14px;
+  font-family: 'Noto Sans TC', sans-serif;
+  color: var(--text);
+  background: var(--surface);
+  outline: none;
+  transition: border-color 0.15s;
+}
+input[type="text"]:focus, input[type="date"]:focus, textarea:focus {
+  border-color: var(--accent);
+}
+textarea { resize: vertical; min-height: 90px; line-height: 1.6; }
+
+.date-row { display: flex; gap: 12px; align-items: flex-end; }
+.date-row > div { flex: 1; }
+.date-sep { font-size: 18px; color: var(--text3); padding-bottom: 10px; }
+
+/* Pill toggle */
+.pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.pill {
+  border: 1px solid var(--border2);
+  border-radius: 99px;
+  padding: 6px 16px;
+  font-size: 13px;
+  cursor: pointer;
+  background: var(--surface);
+  color: var(--text);
+  transition: all 0.15s;
+  user-select: none;
+  font-family: 'Noto Sans TC', sans-serif;
+}
+.pill:hover { border-color: var(--accent); }
+.pill.selected {
+  background: var(--accent-bg);
+  color: var(--accent-text);
+  border-color: var(--accent-bg);
+}
+.pill.green.selected { background: var(--green); border-color: var(--green); color: #fff; }
+.pill.amber.selected { background: var(--amber); border-color: var(--amber); color: #fff; }
+.pill.red.selected { background: var(--red); border-color: var(--red); color: #fff; }
+
+/* Nav buttons */
+.nav { display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; }
+.btn {
+  padding: 9px 22px; border-radius: var(--radius-sm);
+  font-size: 14px; font-weight: 500;
+  cursor: pointer; border: 1px solid var(--border2);
+  background: var(--surface); color: var(--text);
+  font-family: 'Noto Sans TC', sans-serif;
+  transition: all 0.15s;
+}
+.btn:hover { background: var(--surface2); }
+.btn-primary {
+  background: var(--accent-bg); color: var(--accent-text);
+  border-color: var(--accent-bg);
+}
+.btn-primary:hover { opacity: 0.88; background: var(--accent-bg); }
+.btn[hidden] { visibility: hidden; }
+
+/* ===== REPORT ===== */
+#report-section { display: none; }
+
+.report-header {
+  background: var(--accent-bg); color: var(--accent-text);
+  border-radius: var(--radius);
+  padding: 2rem 1.75rem;
+  margin-bottom: 1rem;
+}
+.report-label {
+  font-size: 10px; font-weight: 700;
+  font-family: 'DM Mono', monospace;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  opacity: 0.6;
+  margin-bottom: 0.5rem;
+}
+.report-title { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 0.75rem; }
+.report-meta { display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; opacity: 0.75; }
+.report-meta span { display: flex; align-items: center; gap: 5px; }
+
+.report-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+.rs-heading {
+  font-size: 11px; font-weight: 700;
+  font-family: 'DM Mono', monospace;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.rs-body { font-size: 14px; line-height: 1.8; color: var(--text); }
+.rs-body p { margin-bottom: 0.5rem; }
+.rs-body p:last-child { margin-bottom: 0; }
+
+/* Health badge */
+.health-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 14px; border-radius: 99px;
+  font-size: 13px; font-weight: 500;
+}
+.health-green { background: var(--green-bg); color: var(--green); }
+.health-amber { background: var(--amber-bg); color: var(--amber); }
+.health-red { background: var(--red-bg); color: var(--red); }
+
+/* Table */
+.report-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 0.25rem; }
+.report-table th {
+  background: var(--surface2);
+  text-align: left; padding: 8px 12px;
+  font-weight: 500; color: var(--text2);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.report-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  color: var(--text);
+}
+.report-table tr:last-child td { border-bottom: none; }
+.report-table tr:hover td { background: var(--surface2); }
+
+.status-pill {
+  display: inline-block;
+  padding: 2px 10px; border-radius: 99px;
+  font-size: 11px; font-weight: 500;
+}
+.status-pending { background: var(--surface2); color: var(--text3); border: 1px solid var(--border2); }
+.status-ok { background: var(--green-bg); color: var(--green); }
+.status-risk { background: var(--red-bg); color: var(--red); }
+.status-warn { background: var(--amber-bg); color: var(--amber); }
+
+/* Action items */
+.action-list { list-style: none; padding: 0; }
+.action-item {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+  font-size: 14px; line-height: 1.6;
+}
+.action-item:last-child { border-bottom: none; }
+.action-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent-bg); flex-shrink: 0; margin-top: 7px;
+}
+
+/* Info grid */
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.info-cell { }
+.info-cell .ic-label { font-size: 11px; color: var(--text3); margin-bottom: 3px; font-family: 'DM Mono', monospace; }
+.info-cell .ic-value { font-size: 14px; font-weight: 500; }
+
+/* Print / download actions */
+.report-actions {
+  display: flex; gap: 10px; margin-bottom: 1.5rem; justify-content: flex-end;
+}
+.btn-sm {
+  padding: 7px 16px; font-size: 13px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border2);
+  background: var(--surface);
+  cursor: pointer; font-family: 'Noto Sans TC', sans-serif;
+  color: var(--text);
+  transition: all 0.15s;
+}
+.btn-sm:hover { background: var(--surface2); }
+
+@media print {
+  body { background: white; padding: 0; }
+  .form-section, .app-header, .report-actions, .progress-wrap { display: none !important; }
+  #report-section { display: block !important; }
+  .card { border: none; padding: 0; }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <div class="app-header">
+    <div class="app-logo">
+      <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+    </div>
+    <div>
+      <div class="app-title">跨部門專案追蹤報告</div>
+      <div class="app-sub">填寫問卷後自動產出可列印報告</div>
+    </div>
+  </div>
+
+  <!-- Form Section -->
+  <div id="form-section">
+
+    <div class="progress-wrap">
+      <div class="progress-labels">
+        <span id="step-label">步驟 1 / 7</span>
+        <span id="step-name">專案基本資訊</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progress-fill" style="width:14%"></div>
+      </div>
+    </div>
+
+    <div class="card">
+
+      <!-- Step 1 -->
+      <div class="step active" id="s1">
+        <div class="step-tag">Step 01</div>
+        <div class="step-title">專案基本資訊</div>
+        <div class="step-hint">填入專案的名稱與核心目標，讓報告開頭清楚定位。</div>
+        <label class="field-label">專案名稱</label>
+        <input type="text" id="f-name" placeholder="例：7-ELEVEN 合作裝機專案">
+        <label class="field-label">專案目標</label>
+        <textarea id="f-goal" placeholder="例：完成 3,000 台行動電源機台裝機，並確保上線後穩定運作"></textarea>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="step" id="s2">
+        <div class="step-tag">Step 02</div>
+        <div class="step-title">涉及部門</div>
+        <div class="step-hint">選擇所有參與此專案的部門（可多選）。</div>
+        <div class="pills" id="pills-dept">
+          <div class="pill" data-val="產品">產品</div>
+          <div class="pill" data-val="業務">業務</div>
+          <div class="pill" data-val="技術／工程">技術／工程</div>
+          <div class="pill" data-val="行銷">行銷</div>
+          <div class="pill" data-val="營運">營運</div>
+          <div class="pill" data-val="財務">財務</div>
+          <div class="pill" data-val="客服">客服</div>
+          <div class="pill" data-val="人資">人資</div>
+          <div class="pill" data-val="法務">法務</div>
+        </div>
+        <label class="field-label">其他部門（選填）</label>
+        <input type="text" id="f-dept-other" placeholder="輸入其他部門名稱，以逗號分隔">
+      </div>
+
+      <!-- Step 3 -->
+      <div class="step" id="s3">
+        <div class="step-tag">Step 03</div>
+        <div class="step-title">時程與進度</div>
+        <div class="step-hint">設定專案起訖時間，並選擇目前所處階段。</div>
+        <label class="field-label">專案時程</label>
+        <div class="date-row">
+          <div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px">開始日期</div>
+            <input type="date" id="f-start">
+          </div>
+          <div class="date-sep">→</div>
+          <div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px">結束日期</div>
+            <input type="date" id="f-end">
+          </div>
+        </div>
+        <label class="field-label" style="margin-top:1.25rem">目前階段</label>
+        <div class="pills" id="pills-phase">
+          <div class="pill" data-val="規劃中">規劃中</div>
+          <div class="pill" data-val="啟動">啟動</div>
+          <div class="pill" data-val="執行中">執行中</div>
+          <div class="pill" data-val="測試驗收">測試驗收</div>
+          <div class="pill" data-val="收尾">收尾</div>
+        </div>
+      </div>
+
+      <!-- Step 4 -->
+      <div class="step" id="s4">
+        <div class="step-tag">Step 04</div>
+        <div class="step-title">主要里程碑</div>
+        <div class="step-hint">列出 3～5 個關鍵里程碑，格式建議：<br>里程碑名稱 — 目標日期 — 負責部門</div>
+        <textarea id="f-milestones" style="min-height:140px" placeholder="例：
+1. 合約簽署完成 — 2025/06/01 — 業務
+2. 機台備貨完成 — 2025/06/15 — 營運
+3. 首批試點裝機 — 2025/07/01 — 營運
+4. 全量 50% 達標 — 2025/08/01 — 營運
+5. 3,000 台完成 — 2025/09/30 — 全部門"></textarea>
+      </div>
+
+      <!-- Step 5 -->
+      <div class="step" id="s5">
+        <div class="step-tag">Step 05</div>
+        <div class="step-title">現況風險</div>
+        <div class="step-hint">描述目前執行上遇到的阻礙或潛在風險。</div>
+        <textarea id="f-risks" style="min-height:100px" placeholder="例：門市端配合時間不一致、機台物流延誤、技術資源不足..."></textarea>
+        <label class="field-label" style="margin-top:1.25rem">整體健康度</label>
+        <div class="pills" id="pills-health">
+          <div class="pill green" data-val="健康">🟢 健康</div>
+          <div class="pill amber" data-val="需關注">🟡 需關注</div>
+          <div class="pill red" data-val="高風險">🔴 高風險</div>
+        </div>
+      </div>
+
+      <!-- Step 6 -->
+      <div class="step" id="s6">
+        <div class="step-tag">Step 06</div>
+        <div class="step-title">近期行動項目</div>
+        <div class="step-hint">列出接下來兩週各部門最重要的待辦事項。</div>
+        <textarea id="f-actions" style="min-height:120px" placeholder="例：
+- 業務：確認門市裝機排程、更新聯絡窗口清單
+- 營運：確認倉儲備貨數量、安排物流派送
+- 產品：更新裝機 SOP 文件
+- 財務：對齊費率結構與結帳週期"></textarea>
+      </div>
+
+      <!-- Step 7 -->
+      <div class="step" id="s7">
+        <div class="step-tag">Step 07</div>
+        <div class="step-title">報告受眾與補充</div>
+        <div class="step-hint">選擇報告的主要閱讀對象，系統會調整語氣與呈現方式。</div>
+        <div class="pills" id="pills-audience">
+          <div class="pill" data-val="高層主管">👔 高層主管</div>
+          <div class="pill" data-val="跨部門團隊">🤝 跨部門團隊</div>
+          <div class="pill" data-val="外部合作方">🏢 外部合作方</div>
+        </div>
+        <label class="field-label" style="margin-top:1.25rem">補充說明（選填）</label>
+        <textarea id="f-extra" placeholder="例：請特別標注財務風險、加入上次跨部門會議決議..."></textarea>
+        <label class="field-label">報告人 / 單位（選填）</label>
+        <input type="text" id="f-author" placeholder="例：專案管理辦公室 / 王小明">
+      </div>
+
+      <div class="nav">
+        <button class="btn" id="btn-back" onclick="navigate(-1)" hidden>← 上一步</button>
+        <button class="btn btn-primary" id="btn-next" onclick="navigate(1)">繼續 →</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Report Section -->
+  <div id="report-section">
+    <div class="report-actions">
+      <button class="btn-sm" onclick="window.print()">🖨 列印 / 存成 PDF</button>
+      <button class="btn-sm" onclick="restartForm()">← 重新填寫</button>
+    </div>
+    <div id="report-output"></div>
+  </div>
+
+</div>
+
+<script>
+let current = 1;
+const total = 7;
+const stepNames = ['專案基本資訊','涉及部門','時程與進度','主要里程碑','現況風險','近期行動項目','報告設定'];
+
+function navigate(dir) {
+  const next = current + dir;
+  if (next < 1) return;
+  if (next > total) { generateReport(); return; }
+  document.getElementById('s'+current).classList.remove('active');
+  current = next;
+  document.getElementById('s'+current).classList.add('active');
+  document.getElementById('progress-fill').style.width = Math.round((current/total)*100)+'%';
+  document.getElementById('step-label').textContent = '步驟 '+current+' / '+total;
+  document.getElementById('step-name').textContent = stepNames[current-1];
+  document.getElementById('btn-back').hidden = current === 1;
+  document.getElementById('btn-next').textContent = current === total ? '產出報告 ✓' : '繼續 →';
+}
+
+// Pill toggle
+document.querySelectorAll('.pills').forEach(group => {
+  const multi = group.id === 'pills-dept';
+  group.querySelectorAll('.pill').forEach(p => {
+    p.addEventListener('click', () => {
+      if (!multi) group.querySelectorAll('.pill').forEach(x => x.classList.remove('selected'));
+      p.classList.toggle('selected');
+    });
+  });
+});
+
+function getSelected(id) {
+  return Array.from(document.querySelectorAll('#'+id+' .pill.selected')).map(p=>p.dataset.val);
+}
+
+function val(id) { return (document.getElementById(id)||{}).value || ''; }
+
+function today() {
+  return new Date().toLocaleDateString('zh-TW',{year:'numeric',month:'2-digit',day:'2-digit'});
+}
+
+function parseLines(text) {
+  return text.split('\n').map(l=>l.trim()).filter(Boolean);
+}
+
+function healthClass(h) {
+  if (!h) return 'status-pending';
+  if (h === '健康') return 'health-green';
+  if (h === '需關注') return 'health-amber';
+  return 'health-red';
+}
+function healthLabel(h) {
+  if (!h) return '⚠️ 未填';
+  if (h === '健康') return '🟢 健康';
+  if (h === '需關注') return '🟡 需關注';
+  return '🔴 高風險';
+}
+
+function parseMilestones(text) {
+  return parseLines(text).map(line => {
+    const parts = line.replace(/^\d+\.\s*/,'').split('—').map(s=>s.trim());
+    return { name: parts[0]||line, date: parts[1]||'—', dept: parts[2]||'—' };
+  });
+}
+
+function parseActions(text) {
+  return parseLines(text).map(line => line.replace(/^[-•]\s*/,''));
+}
+
+function generateReport() {
+  const name = val('f-name') || '（未填專案名稱）';
+  const goal = val('f-goal') || '（未填）';
+  const depts = getSelected('pills-dept');
+  const deptOther = val('f-dept-other');
+  if (deptOther) deptOther.split(/[,，]/).forEach(d => { if(d.trim()) depts.push(d.trim()); });
+  const deptStr = depts.length ? depts.join('、') : '未指定';
+  const start = val('f-start') || '未填';
+  const end = val('f-end') || '未填';
+  const phase = (getSelected('pills-phase')[0]) || '未指定';
+  const milestoneRaw = val('f-milestones');
+  const milestones = milestoneRaw ? parseMilestones(milestoneRaw) : [];
+  const risks = val('f-risks') || '';
+  const health = getSelected('pills-health')[0] || '';
+  const actionsRaw = val('f-actions');
+  const actions = actionsRaw ? parseActions(actionsRaw) : [];
+  const audience = getSelected('pills-audience')[0] || '跨部門團隊';
+  const extra = val('f-extra') || '';
+  const author = val('f-author') || '專案管理辦公室';
+
+  // Exec summary by audience
+  const summaries = {
+    '高層主管': `本專案「${name}」目標為${goal}，目前進度處於<strong>${phase}</strong>階段，整體健康度評估為<strong>${healthLabel(health)}</strong>。建議高層持續關注里程碑達成狀況與風險應對進度。`,
+    '跨部門團隊': `本報告彙整「${name}」的最新執行狀況，供 ${deptStr} 等部門共同參考對齊。請各部門核對里程碑責任歸屬，並確認近期行動項目的推進情況。`,
+    '外部合作方': `本報告說明「${name}」的整體執行進度與當前狀態，作為合作雙方溝通的正式依據。如有任何疑問，請聯繫 ${author}。`
+  };
+  const execSummary = summaries[audience] || summaries['跨部門團隊'];
+
+  // Milestone table rows
+  const milestoneTR = milestones.length
+    ? milestones.map(m => `<tr>
+        <td>${m.name}</td>
+        <td>${m.date}</td>
+        <td>${m.dept}</td>
+        <td><span class="status-pill status-pending">待確認</span></td>
+      </tr>`).join('')
+    : `<tr><td colspan="4" style="color:var(--text3);text-align:center;padding:16px">尚未填寫里程碑</td></tr>`;
+
+  // Risk rows
+  const riskLines = risks ? parseLines(risks) : [];
+  const riskHTML = riskLines.length
+    ? riskLines.map(r=>`<p>• ${r}</p>`).join('')
+    : '<p style="color:var(--text3)">尚未填寫風險項目</p>';
+
+  // Action items
+  const actionHTML = actions.length
+    ? actions.map(a=>`<li class="action-item"><div class="action-dot"></div><div>${a}</div></li>`).join('')
+    : `<li class="action-item"><div class="action-dot"></div><div style="color:var(--text3)">尚未填寫行動項目</div></li>`;
+
+  const extraSection = extra ? `
+    <div class="report-section">
+      <div class="rs-heading">補充說明</div>
+      <div class="rs-body"><p>${extra}</p></div>
+    </div>` : '';
+
+  const html = `
+    <div class="report-header">
+      <div class="report-label">Project Status Report</div>
+      <div class="report-title">${name}</div>
+      <div class="report-meta">
+        <span>📅 報告日期：${today()}</span>
+        <span>👤 ${author}</span>
+        <span>🎯 受眾：${audience}</span>
+        <span>${healthLabel(health)}</span>
+      </div>
+    </div>
+
+    <div class="report-section">
+      <div class="rs-heading">執行摘要</div>
+      <div class="rs-body"><p>${execSummary}</p></div>
+    </div>
+
+    <div class="report-section">
+      <div class="rs-heading">專案概況</div>
+      <div class="info-grid">
+        <div class="info-cell"><div class="ic-label">專案名稱</div><div class="ic-value">${name}</div></div>
+        <div class="info-cell"><div class="ic-label">目前階段</div><div class="ic-value">${phase}</div></div>
+        <div class="info-cell"><div class="ic-label">時程</div><div class="ic-value">${start} ～ ${end}</div></div>
+        <div class="info-cell"><div class="ic-label">涉及部門</div><div class="ic-value">${deptStr}</div></div>
+      </div>
+      <div style="margin-top:1rem">
+        <div class="ic-label" style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:4px">專案目標</div>
+        <div style="font-size:14px;line-height:1.7">${goal}</div>
+      </div>
+    </div>
+
+    <div class="report-section">
+      <div class="rs-heading">里程碑狀態</div>
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>里程碑</th>
+            <th>目標日期</th>
+            <th>負責部門</th>
+            <th>狀態</th>
+          </tr>
+        </thead>
+        <tbody>${milestoneTR}</tbody>
+      </table>
+    </div>
+
+    <div class="report-section">
+      <div class="rs-heading">風險與阻礙</div>
+      <div class="rs-body">${riskHTML}</div>
+    </div>
+
+    <div class="report-section">
+      <div class="rs-heading">近期行動項目（未來兩週）</div>
+      <ul class="action-list">${actionHTML}</ul>
+    </div>
+
+    ${extraSection}
+
+    <div class="report-section">
+      <div class="rs-heading">結語</div>
+      <div class="rs-body">
+        <p>本報告由專案追蹤工具自動產出，內容以問卷填寫資訊為準。如有任何更新或修正，請重新填寫問卷或直接聯繫 ${author}。</p>
+        <p style="margin-top:0.5rem;color:var(--text3);font-size:12px">產出時間：${today()} ｜ 工具：跨部門專案追蹤報告產生器</p>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('report-output').innerHTML = html;
+  document.getElementById('form-section').style.display = 'none';
+  document.getElementById('report-section').style.display = 'block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function restartForm() {
+  document.getElementById('report-section').style.display = 'none';
+  document.getElementById('form-section').style.display = 'block';
+  current = 1;
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+  document.getElementById('s1').classList.add('active');
+  document.getElementById('progress-fill').style.width = '14%';
+  document.getElementById('step-label').textContent = '步驟 1 / 7';
+  document.getElementById('step-name').textContent = stepNames[0];
+  document.getElementById('btn-back').hidden = true;
+  document.getElementById('btn-next').textContent = '繼續 →';
+}
+</script>
+</body>
+</html>
